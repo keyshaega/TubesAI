@@ -68,26 +68,95 @@
         <p>A* memilih node dengan <b>f(n) = g(n) + h(n)</b> terkecil. <b>g</b> adalah biaya dari start; <b>h</b> memperkirakan biaya menuju goal. UCS menjalankan algoritme yang sama dengan <b>h = 0</b>.</p>
         <p><code>gScore</code> menyimpan biaya terbaik ke setiap posisi. Jika ditemukan jalur lebih murah, biaya dan <code>cameFrom</code> diperbarui. Jadi, kita tidak cukup memakai <code>visited</code> boolean. Jalur akhir dilacak mundur melalui <code>cameFrom</code>.</p>
       </div>
+
       <div><h3>Inti loop pencarian</h3><pre>frontier = [start]; gScore[start] = 0
-selama frontier tidak kosong:
-  ambil node dengan f terkecil
-  lewati entri yang g-nya sudah usang
-  catat node sebagai di-expand
-  jika node adalah goal: susun jalur
-  untuk setiap tetangga yang valid:
-    gBaru = g[node] + 1
-    jika gBaru &lt; gScore[tetangga]:
-      perbarui gScore dan cameFrom
-      masukkan tetangga, f = gBaru + h</pre>
-        <p class="small">Jika f sama, node yang masuk lebih dahulu dipilih (FIFO). Pencarian berhenti saat goal dikeluarkan, bukan saat pertama kali dimasukkan ke frontier.</p>
-      </div>
-      <div class="heuristic-note"><h3>Heuristik mana yang tepat?</h3><p>Untuk gerak 4 arah dan biaya 1, <b>Manhattan: |dx| + |dy|</b> cocok karena menghitung langkah minimum tanpa halangan. Euclidean: √(dx² + dy²) dan Chebyshev: max(|dx|, |dy|) juga tidak melebihi biaya sebenarnya, tetapi estimasinya lebih rendah. Ketiganya admissible dan konsisten pada aturan ini, sehingga tetap optimal. Halangan hanya bisa menambah jarak. Hasil ekspansi tetap bergantung pada peta dan pemecahan nilai f yang seri; bandingkan hasil eksperimennya.</p></div>
-    </section>
-    <footer>Kejar Player · JavaScript sederhana, tanpa library · UCS dan A* pada grid 2D</footer>
-  </main>
-  <script src="src/pathfinding.js"></script>
-  <script src="src/maps.js"></script>
-  <script src="src/experiments.js"></script>
-  <script src="src/app.js"></script>
+        selama frontier tidak kosong:
+          ambil node dengan f terkecil
+          lewati entri yang g-nya sudah usang
+          catat node sebagai di-expand
+          jika node adalah goal: susun jalur
+          untuk setiap tetangga yang valid:
+            gBaru = g[node] + 1
+            jika gBaru &lt; gScore[tetangga]:
+              perbarui gScore dan cameFrom
+              masukkan tetangga, f = gBaru + h</pre>
+                <p class="small">Jika f sama, node yang masuk lebih dahulu dipilih (FIFO). Pencarian berhenti saat goal dikeluarkan, bukan saat pertama kali dimasukkan ke frontier.</p>
+              </div>
+              <div class="heuristic-note"><h3>Heuristik mana yang tepat?</h3><p>Untuk gerak 4 arah dan biaya 1, <b>Manhattan: |dx| + |dy|</b> cocok karena menghitung langkah minimum tanpa halangan. Euclidean: √(dx² + dy²) dan Chebyshev: max(|dx|, |dy|) juga tidak melebihi biaya sebenarnya, tetapi estimasinya lebih rendah. Ketiganya admissible dan konsisten pada aturan ini, sehingga tetap optimal. Halangan hanya bisa menambah jarak. Hasil ekspansi tetap bergantung pada peta dan pemecahan nilai f yang seri; bandingkan hasil eksperimennya.</p></div>
+            </section>
+            <footer>Kejar Player · JavaScript sederhana, tanpa library · UCS dan A* pada grid 2D</footer>
+          </main>
+          <!-- Modal Mode Duel / Battle Turn-Based (Tubes Tahap 2) -->
+          <div id="battle-container" class="battle-modal" style="display: none;">
+            <div class="battle-box">
+              <h2>⚔️ Turn-Based Battle Mode</h2>
+              
+              <div class="status-bars">
+                <div class="character-card">
+                  <h3>🧙 Player</h3>
+                  <div class="hp-bar-bg"><div id="player-hp-bar" class="hp-bar-fill"></div></div>
+                  <p>HP: <span id="player-hp-val">100</span>/100 | Potions: <span id="player-potions-val">2</span></p>
+                </div>
+                
+                <div class="character-card">
+                  <h3>👹 NPC (AI)</h3>
+                  <div class="hp-bar-bg"><div id="npc-hp-bar" class="hp-bar-fill"></div></div>
+                  <p>HP: <span id="npc-hp-val">100</span>/100 | Potions: <span id="npc-potions-val">2</span></p>
+                </div>
+              </div>
+
+              <!-- Tombol Aksi Player -->
+              <div class="battle-actions">
+                <button id="btn-attack" class="btn btn-danger">⚔️ Attack</button>
+                <button id="btn-defend" class="btn btn-secondary">🛡️ Defend</button>
+                <button id="btn-potion" class="btn btn-success">🧪 Potion (+25 HP)</button>
+              </div>
+
+              <!-- Parameter Kontrol AI -->
+              <div class="ai-controls">
+                <label>Algoritma:
+                  <select id="select-algo">
+                    <option value="alphabeta">Alpha-Beta Pruning</option>
+                    <option value="minimax">Standard Minimax</option>
+                    <option value="expectimax">Expectimax</option>
+                  </select>
+                </label>
+                <label>Evaluasi:
+                  <select id="select-eval">
+                    <option value="balanced">Balanced</option>
+                    <option value="aggressive">Aggressive</option>
+                    <option value="defensive">Defensive</option>
+                  </select>
+                </label>
+                <label>Depth:
+                  <select id="select-depth">
+                    <option value="2">2</option>
+                    <option value="4" selected>4</option>
+                    <option value="6">6</option>
+                  </select>
+                </label>
+                <label>Ordering:
+                  <select id="select-order">
+                    <option value="optimal">Optimal (Best-first)</option>
+                    <option value="default">Default</option>
+                    <option value="reverse">Reverse (Worst-first)</option>
+                  </select>
+                </label>
+              </div>
+
+              <!-- Panel Debug Overlay Sesuai Kriteria Tubes -->
+              <div id="debug-overlay" class="debug-panel">
+                <em>Menunggu inisialisasi pertarungan...</em>
+              </div>
+
+              <div id="battle-log" class="battle-log"></div>
+            </div>
+          </div>
+
+    <script src="src/pathfinding.js"></script>
+    <script src="src/maps.js"></script>
+    <script src="src/experiments.js"></script>
+    <script src="src/app.js"></script>
+    <script type="module" src="./src/app.js"></script>
 </body>
 </html>

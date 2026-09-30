@@ -1,27 +1,62 @@
-'use strict';
-const fs = require('node:fs');
-const path = require('node:path');
-const Experiments = require('../src/experiments.js');
-const result = Experiments.runSuite();
-const destination = path.join(__dirname, '..', 'experiments');
-fs.mkdirSync(destination, { recursive: true });
-fs.writeFileSync(path.join(destination, 'results.csv'), Experiments.toCSV(result) + '\n');
-// Simpan setiap peta lengkap agar hasil dapat direproduksi tanpa menebak posisinya.
-// Format satu objek per baris menghindari keluaran JSON ratusan baris panjang.
-const json = '{\n' + Object.entries(result).map(([key, value]) =>
-  '  ' + JSON.stringify(key) + ': ' + (Array.isArray(value)
-    ? '[\n' + value.map(item => '    ' + JSON.stringify(item)).join(',\n') + '\n  ]'
-    : JSON.stringify(value))).join(',\n') + '\n}\n';
-fs.writeFileSync(path.join(destination, 'results.json'), json);
-console.table(result.summary.map(row => ({
-  heuristik: row.heuristic, ditemukan: `${row.found}/${row.runs}`,
-  rataRataExpand: row.avgExpanded, medianMsRataRata: Number(row.avgTimeMs.toFixed(4)),
-  rasioBiaya: row.avgRatio, suboptimal: row.suboptimalCount
-})));
-const ucs = result.summary.find(row => row.heuristic === 'ucs');
-const manhattan = result.summary.find(row => row.heuristic === 'manhattan');
-console.log(`Manhattan mengurangi ekspansi rata-rata ${((1 - manhattan.avgExpanded / ucs.avgExpanded) * 100).toFixed(1)}% dibanding UCS pada lima peta ini.`);
-console.log(result.methodology.conclusion);
-console.log(result.methodology.limitation);
-console.log(result.methodology.timing);
-console.log('Hasil disimpan di experiments/results.csv dan experiments/results.json.');
+import fs from 'fs';
+import { BattleState, AdversarialSolver } from '../src/adversarial.js';
+
+const depths = [2, 4, 6];
+const algorithms = ['minimax', 'alphabeta', 'expectimax'];
+const orderings = ['default', 'optimal', 'reverse'];
+const evalTypes = ['balanced', 'aggressive', 'defensive'];
+
+const results = [];
+
+const testState = new BattleState({
+  playerHp: 80,
+  npcHp: 65,
+  playerPotions: 1,
+  npcPotions: 2
+});
+
+console.log("Menjalankan eksperimen Adversarial Search...");
+
+for (const algo of algorithms) {
+  for (const depth of depths) {
+    for (const evalType of evalTypes) {
+      for (const order of orderings) {
+        if (algo !== 'alphabeta' && order !== 'default') continue; // Urutan hanya relevan memangkas pada Alpha-Beta
+
+        const solver = new AdversarialSolver({
+          algorithm: algo,
+          maxDepth: depth,
+          evalType: evalType,
+          actionOrdering: order
+        });
+
+        const t0 = performance.now();
+        const output = solver.solve(testState);
+        const duration = (performance.now() - t0).toFixed(3);
+
+        results.push({
+          algorithm: algo,
+          depth,
+          evalType,
+          ordering: order,
+          bestAction: output.bestAction,
+          bestScore: output.bestScore.toFixed(2),
+          nodesEvaluated: output.nodeCount,
+          timeMs: duration
+        });
+      }
+    }
+  }
+}
+
+// Simpan JSON
+fs.writeFileSync('./experiments/results.json', JSON.stringify(results, null, 2));
+
+// Simpan CSV untuk grafik laporan
+const headers = "algorithm,depth,evalType,ordering,bestAction,bestScore,nodesEvaluated,timeMs\n";
+const csvRows = results.map(r => 
+  `${r.algorithm},${r.depth},${r.evalType},${r.ordering},${r.bestAction},${r.bestScore},${r.nodesEvaluated},${r.timeMs}`
+).join('\n');
+fs.writeFileSync('./experiments/results.csv', headers + csvRows);
+
+console.log("Eksperimen selesai! Hasil tersimpan di experiments/results.json & results.csv");

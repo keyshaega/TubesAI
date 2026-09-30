@@ -1,3 +1,4 @@
+import { BattleState, AdversarialSolver } from './adversarial.js';
 // Kontrol permainan, gambar grid, dan tabel. Algoritme ada di pathfinding.js.
 (function () {
   'use strict';
@@ -51,20 +52,29 @@
     draw();
   }
 
-  function step() {
-    if (!result.found || result.path.length < 2) return;
-    npc = { ...result.path[1] };
-    replan(); // Overlay selalu cocok dengan posisi NPC yang sekarang.
-  }
+    function step() {
+      if (!result.found || result.path.length < 2) return;
 
-  function movePlayer(dx, dy) {
-    const next = { x: player.x + dx, y: player.y + dy };
-    if (PathLab.isWalkable(map.grid, next)) {
-      player = next;
+      npc = { ...result.path[1] };
+
+      // Cek apakah NPC sudah dekat dengan Player untuk memulai battle
+      checkBattleTrigger(player, npc);
+
       replan();
     }
-  }
 
+  function movePlayer(dx, dy) {
+      const next = { x: player.x + dx, y: player.y + dy };
+
+      if (PathLab.isWalkable(map.grid, next)) {
+        player = next;
+
+        // Cek apakah Player mendekati NPC untuk memulai battle
+        checkBattleTrigger(player, npc);
+
+        replan();
+      }
+    }
   // Setiap sel digambar sederhana agar hubungan gambar dan grid mudah dilihat.
   function draw() {
     const size = canvas.width / map.grid[0].length;
@@ -201,8 +211,156 @@
     const bounds = canvas.getBoundingClientRect();
     const next = { x: Math.floor((event.clientX - bounds.left) / bounds.width * map.grid[0].length),
       y: Math.floor((event.clientY - bounds.top) / bounds.height * map.grid.length) };
-    if (PathLab.isWalkable(map.grid, next)) { player = next; replan(); }
+    if (PathLab.isWalkable(map.grid, next)) {
+      player = next;
+
+      // Cek apakah Player mendekati NPC untuk memulai battle
+      checkBattleTrigger(player, npc);
+
+      replan();
+    }
     canvas.focus({ preventScroll: true });
   });
   reset();
 })();
+
+// ==========================================
+// KODE ADVERSARIAL SEARCH & BATTLE (TAHAP 2)
+// ==========================================
+let currentBattle = null;
+let isBattleActive = false;
+
+const aiSolver = new AdversarialSolver({
+  algorithm: 'alphabeta',
+  maxDepth: 4,
+  evalType: 'balanced',
+  actionOrdering: 'optimal'
+});
+
+// Event listener tombol & konfigurasi AI
+const algoSel = document.getElementById('select-algo');
+const evalSel = document.getElementById('select-eval');
+const depthSel = document.getElementById('select-depth');
+const orderSel = document.getElementById('select-order');
+
+if (algoSel) algoSel.onchange = (e) => aiSolver.algorithm = e.target.value;
+if (evalSel) evalSel.onchange = (e) => aiSolver.evalType = e.target.value;
+if (depthSel) depthSel.onchange = (e) => aiSolver.maxDepth = parseInt(e.target.value);
+if (orderSel) orderSel.onchange = (e) => aiSolver.actionOrdering = e.target.value;
+
+document.getElementById('btn-attack')?.addEventListener('click', () => playerTurn('attack'));
+document.getElementById('btn-defend')?.addEventListener('click', () => playerTurn('defend'));
+document.getElementById('btn-potion')?.addEventListener('click', () => playerTurn('potion'));
+
+export function checkBattleTrigger(playerPos, npcPos) {
+  if (isBattleActive || !playerPos || !npcPos) return;
+
+  const dist = Math.abs(playerPos.x - npcPos.x) + Math.abs(playerPos.y - npcPos.y);
+  if (dist <= 1) {
+    initiateBattle();
+  }
+}
+
+function initiateBattle() {
+  isBattleActive = true;
+  currentBattle = new BattleState({
+    playerHp: 100,
+    npcHp: 100,
+    playerPotions: 2,
+    npcPotions: 2,
+    turn: 'player'
+  });
+
+  const modal = document.getElementById('battle-container');
+  if (modal) modal.style.display = 'flex';
+  logMessage("Pertarungan dimulai! Pilih langkah pertamamu.");
+  updateBattleUI();
+}
+
+function playerTurn(action) {
+  if (!isBattleActive || currentBattle.turn !== 'player') return;
+
+  logMessage(`Player menggunakan: <b>${action.toUpperCase()}</b>`);
+  currentBattle = currentBattle.applyAction(action, 'player');
+  updateBattleUI();
+
+  if (currentBattle.isTerminal()) {
+    endBattle(currentBattle.playerHp > 0 ? "Selamat, Kamu Menang!" : "NPC Menang!");
+    return;
+  }
+
+  toggleActionButtons(false);
+  setTimeout(npcTurn, 600);
+}
+
+function npcTurn() {
+  if (!isBattleActive || currentBattle.turn !== 'npc') return;
+
+  const t0 = performance.now();
+  const decision = aiSolver.solve(currentBattle);
+  const computeTime = (performance.now() - t0).toFixed(2);
+
+  renderDebugOverlay(decision, computeTime);
+
+  logMessage(`NPC memilih: <b>${decision.bestAction.toUpperCase()}</b>`);
+  currentBattle = currentBattle.applyAction(decision.bestAction, 'npc');
+  updateBattleUI();
+
+  if (currentBattle.isTerminal()) {
+    endBattle(currentBattle.npcHp > 0 ? "NPC Menang!" : "Selamat, Kamu Menang!");
+    return;
+  }
+
+  toggleActionButtons(true);
+}
+
+function renderDebugOverlay(decision, computeTime) {
+  const overlay = document.getElementById('debug-overlay');
+  if (!overlay) return;
+
+  const scores = Object.entries(decision.actionScores)
+    .map(([act, score]) => `<li><b>${act}</b>: ${score.toFixed(1)}</li>`)
+    .join('');
+
+  overlay.innerHTML = `
+    <div><b>Mode:</b> ${aiSolver.algorithm.toUpperCase()} (Depth: ${aiSolver.maxDepth}, Eval: ${aiSolver.evalType})</div>
+    <div><b>Nodes Evaluated:</b> <span style="color:#38bdf8">${decision.nodeCount} nodes</span> (${computeTime} ms)</div>
+    <div><b>Pertimbangan Skor Aksi:</b></div>
+    <ul style="margin: 2px 0 0 16px; padding: 0;">${scores}</ul>
+  `;
+}
+
+function updateBattleUI() {
+  document.getElementById('player-hp-val').innerText = currentBattle.playerHp;
+  document.getElementById('player-hp-bar').style.width = `${currentBattle.playerHp}%`;
+  document.getElementById('player-potions-val').innerText = currentBattle.playerPotions;
+
+  document.getElementById('npc-hp-val').innerText = currentBattle.npcHp;
+  document.getElementById('npc-hp-bar').style.width = `${currentBattle.npcHp}%`;
+  document.getElementById('npc-potions-val').innerText = currentBattle.npcPotions;
+
+  const potionBtn = document.getElementById('btn-potion');
+  if (potionBtn) potionBtn.disabled = currentBattle.playerPotions <= 0;
+}
+
+function toggleActionButtons(enable) {
+  document.getElementById('btn-attack').disabled = !enable;
+  document.getElementById('btn-defend').disabled = !enable;
+  document.getElementById('btn-potion').disabled = !enable || currentBattle.playerPotions <= 0;
+}
+
+function logMessage(msg) {
+  const log = document.getElementById('battle-log');
+  if (log) {
+    log.innerHTML = `<div>${msg}</div>` + log.innerHTML;
+  }
+}
+
+function endBattle(message) {
+  setTimeout(() => {
+    alert(message);
+    const modal = document.getElementById('battle-container');
+    if (modal) modal.style.display = 'none';
+    isBattleActive = false;
+  }, 400);
+}

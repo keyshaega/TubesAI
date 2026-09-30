@@ -85,6 +85,75 @@ selama frontier tidak kosong:
     </section>
     <footer>Kejar Player · JavaScript sederhana, tanpa library · UCS dan A* pada grid 2D</footer>
   </main>
+
+        
+      <div id="battle-container" class="battle-modal" style="display: none;">
+        <div class="battle-box">
+          <h2>⚔️ Turn-Based Battle Mode (Tahap 2)</h2>
+          
+          <div class="status-bars">
+            <div class="character-card">
+              <h3>🧙 Player</h3>
+              <div class="hp-bar-bg"><div id="player-hp-bar" class="hp-bar-fill"></div></div>
+              <p>HP: <span id="player-hp-val">100</span>/100 | Potions: <span id="player-potions-val">2</span></p>
+              <p id="player-status-tag" class="tag"></p>
+            </div>
+            
+            <div class="character-card">
+              <h3>👹 NPC (AI)</h3>
+              <div class="hp-bar-bg"><div id="npc-hp-bar" class="hp-bar-fill"></div></div>
+              <p>HP: <span id="npc-hp-val">100</span>/100 | Potions: <span id="npc-potions-val">2</span></p>
+              <p id="npc-status-tag" class="tag"></p>
+            </div>
+          </div>
+
+          <!-- Battle Actions -->
+          <div class="battle-actions">
+            <button id="btn-attack" class="btn btn-danger">⚔️ Attack</button>
+            <button id="btn-defend" class="btn btn-secondary">🛡️ Defend</button>
+            <button id="btn-potion" class="btn btn-success">🧪 Potion (+25 HP)</button>
+          </div>
+
+          <!-- Controls Pengujian Parameter AI (Bisa disetel langsung) -->
+          <div class="ai-controls">
+            <label>Algoritma:
+              <select id="select-algo">
+                <option value="alphabeta">Alpha-Beta Pruning</option>
+                <option value="minimax">Standard Minimax</option>
+                <option value="expectimax">Expectimax</option>
+              </select>
+            </label>
+            <label>Fungsi Evaluasi:
+              <select id="select-eval">
+                <option value="balanced">Balanced</option>
+                <option value="aggressive">Aggressive</option>
+                <option value="defensive">Defensive</option>
+              </select>
+            </label>
+            <label>Depth Limit:
+              <select id="select-depth">
+                <option value="2">2</option>
+                <option value="4" selected>4</option>
+                <option value="6">6</option>
+              </select>
+            </label>
+            <label>Ordering:
+              <select id="select-order">
+                <option value="optimal">Optimal (Best-first)</option>
+                <option value="default">Default</option>
+                <option value="reverse">Reverse (Worst-first)</option>
+              </select>
+            </label>
+          </div>
+
+          <!-- Debug Overlay Sesuai Kriteria Tubes -->
+          <div id="debug-overlay" class="debug-panel">
+            <em>Menunggu giliran NPC...</em>
+          </div>
+
+          <div id="battle-log" class="battle-log"></div>
+        </div>
+      </div>
   <script src="src/pathfinding.js"></script>
   <script src="src/maps.js"></script>
   <script src="src/experiments.js"></script>
